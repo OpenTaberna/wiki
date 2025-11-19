@@ -2,7 +2,7 @@
 title: Database Architecture
 description: Holds Ideas for a possible Database Architecture
 published: true
-date: 2025-11-19T20:54:10.882Z
+date: 2025-11-19T20:57:41.050Z
 tags: architecture, database
 editor: markdown
 dateCreated: 2025-11-19T20:45:46.121Z
@@ -15,10 +15,8 @@ To improve indexation and performance I suggest the following layout. (See the I
 **Diagram**
 Sadly the wiki can not display it. Therefore please copy paste the mermaid section into any markdown convertor and have a look (I like Obsidian for that).
 
-```diagram
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0eWxlPSJiYWNrZ3JvdW5kOiB0cmFuc3BhcmVudDsgYmFja2dyb3VuZC1jb2xvcjogdHJhbnNwYXJlbnQ7IGNvbG9yLXNjaGVtZTogbGlnaHQgZGFyazsiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2ZXJzaW9uPSIxLjEiIHdpZHRoPSIxcHgiIGhlaWdodD0iMXB4IiB2aWV3Qm94PSIwIDAgMSAxIiBjb250ZW50PSImbHQ7bXhmaWxlIGhvc3Q9JnF1b3Q7ZW1iZWQuZGlhZ3JhbXMubmV0JnF1b3Q7IGFnZW50PSZxdW90O01vemlsbGEvNS4wIChYMTE7IExpbnV4IHg4Nl82NDsgcnY6MTQ1LjApIEdlY2tvLzIwMTAwMTAxIEZpcmVmb3gvMTQ1LjAmcXVvdDsgdmVyc2lvbj0mcXVvdDsyOS4xLjAmcXVvdDsmZ3Q7Jmx0O2RpYWdyYW0gaWQ9JnF1b3Q7VTJWRk0zMDM0ZF80WDFsclVKTGMmcXVvdDsgbmFtZT0mcXVvdDtQYWdlLTEmcXVvdDsmZ3Q7ZGRIQkVvSWdFQURRcitHT1lGT2R6ZkxTeVVOblJqWmhCbDBIYWJTK1BoMHdZNndUeTl1RlpSYkNzMmE4V05HcEswb3doRkU1RW40aWpDVnB3cVpsbHFlWC9USDFVRnN0UTlFS3BYNUJRQnIwb1NYMFVhRkRORTUzTVZiWXRsQzV5SVMxT01SbGR6UngxMDdVc0lHeUVtYXJOeTJkOG5yWTBkVUwwTFZhT2ljMFpCcXhGQWZvbFpBNGZCSFBDYzhzb3ZOUk0yWmc1dUV0Yy9IbnpuK3luNGRaYU4yUEExT3czajF0b2gvaStScz0mbHQ7L2RpYWdyYW0mZ3Q7Jmx0Oy9teGZpbGUmZ3Q7Ij48ZGVmcy8+PGc+PGcgZGF0YS1jZWxsLWlkPSIwIj48ZyBkYXRhLWNlbGwtaWQ9IjEiLz48L2c+PC9nPjwvc3ZnPg==
-```
 
+![database diagram layout.jpg](/database/database diagram layout.jpg)
 
 ```mermaid
 erDiagram
