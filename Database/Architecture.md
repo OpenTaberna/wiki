@@ -2,7 +2,7 @@
 title: Database Architecture
 description: Holds Ideas for a possible Database Architecture
 published: true
-date: 2025-11-19T20:45:46.121Z
+date: 2025-11-19T20:48:53.598Z
 tags: architecture, database
 editor: markdown
 dateCreated: 2025-11-19T20:45:46.121Z
@@ -11,6 +11,135 @@ dateCreated: 2025-11-19T20:45:46.121Z
 # Database Architecture
 
 To improve indexation and performance I suggest the following layout. (See the Item description in [API Architecture](/API/Architecture) to have a better understanding of the data set we are thinking about).
+
+**Diagram**
+
+```mermaid
+erDiagram
+
+    SHOPS {
+        uuid id PK
+        text name
+        timestamptz created_at
+    }
+
+    CATEGORIES {
+        uuid id PK
+        uuid shop_id FK
+        text name
+        text slug
+        uuid parent_id FK
+        int position
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    ITEMS {
+        uuid id PK
+        uuid shop_id FK
+        uuid uuid UNIQUE
+        text sku UNIQUE
+        text status
+        text name
+        text slug
+        text short_description
+        text description
+        text brand
+
+        bigint price_amount
+        char(3) price_currency
+        boolean price_includes_tax
+        bigint price_original_amount
+        text tax_class
+
+        int stock_quantity
+        text stock_status
+        boolean allow_backorder
+
+        text main_image_url
+
+        boolean is_physical
+        numeric weight_value
+        text weight_unit
+        numeric dim_width
+        numeric dim_height
+        numeric dim_length
+        text dim_unit
+        text shipping_class
+
+        text barcode
+        text manufacturer_part_number
+        char(2) country_of_origin
+
+        jsonb custom_data
+
+        timestamptz created_at
+        timestamptz updated_at
+        text created_by
+        text updated_by
+    }
+
+    ITEM_CATEGORIES {
+        uuid item_id FK
+        uuid category_id FK
+    }
+
+    ITEM_MEDIA {
+        uuid id PK
+        uuid item_id FK
+        text url
+        int position
+        text alt_text
+    }
+
+    ATTRIBUTES {
+        uuid id PK
+        uuid shop_id FK
+        text code
+        text name
+        text data_type
+        timestamptz created_at
+    }
+
+    ITEM_ATTRIBUTES {
+        uuid item_id FK
+        uuid attribute_id FK
+        text value_text
+        numeric value_number
+        boolean value_bool
+    }
+
+    ITEM_EVENTS {
+        uuid id PK
+        uuid item_id FK
+        text event_type
+        jsonb payload
+        timestamptz created_at
+        text user_id
+    }
+
+    %% Relationships
+
+    SHOPS ||--o{ CATEGORIES : "has many"
+    SHOPS ||--o{ ITEMS : "has many"
+    SHOPS ||--o{ ATTRIBUTES : "has many"
+
+    CATEGORIES ||--o{ CATEGORIES : "parent_of (self-rel)"
+    ITEMS ||--o{ ITEM_CATEGORIES : "categorized_by"
+    CATEGORIES ||--o{ ITEM_CATEGORIES : "contains_items"
+
+    ITEMS ||--o{ ITEM_MEDIA : "has media"
+    ITEMS ||--o{ ITEM_ATTRIBUTES : "has attributes"
+    ATTRIBUTES ||--o{ ITEM_ATTRIBUTES : "used by"
+
+    ITEMS ||--o{ ITEM_EVENTS : "has events"
+
+```
+
+
+
+
+
 
 Table for Categories:
 ```sql
