@@ -2,7 +2,7 @@
 title: Database Architecture
 description: Holds Ideas for a possible Database Architecture
 published: true
-date: 2025-11-19T20:57:41.050Z
+date: 2025-11-19T20:59:12.870Z
 tags: architecture, database
 editor: markdown
 dateCreated: 2025-11-19T20:45:46.121Z
@@ -13,10 +13,10 @@ dateCreated: 2025-11-19T20:45:46.121Z
 To improve indexation and performance I suggest the following layout. (See the Item description in [API Architecture](/API/Architecture) to have a better understanding of the data set we are thinking about).
 
 **Diagram**
-Sadly the wiki can not display it. Therefore please copy paste the mermaid section into any markdown convertor and have a look (I like Obsidian for that).
+Sadly the wiki can not display it. Therefore please copy paste the mermaid section into any markdown convertor and have a look (I like Obsidian for that). Here is a picture of the diagram.
 
 
-![database diagram layout.jpg](/database/database diagram layout.jpg)
+![database_diagram_layout.jpg](/database/database_diagram_layout.jpg)
 
 ```mermaid
 erDiagram
