@@ -2,7 +2,7 @@
 title: API Architecture
 description: Architecture Design for MVP Endpoints
 published: true
-date: 2025-11-19T20:32:14.586Z
+date: 2025-11-19T20:36:00.097Z
 tags: api, architecture
 editor: markdown
 dateCreated: 2025-11-19T20:13:35.465Z
