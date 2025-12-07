@@ -155,6 +155,7 @@ opentaberna/
 ## Next Steps
 
 ### For End Users:
+- Read [Configuration Guide](/Configuration) for detailed settings
 - Read [Deployment Guide](/Deployment) for production setup
 - Check `/docs` on your API instance for endpoint documentation
 
@@ -162,6 +163,7 @@ opentaberna/
 - See `fastapi_opentaberna/docs/architecture.md` for architecture overview
 - See `fastapi_opentaberna/docs/development.md` for development workflows
 - See `fastapi_opentaberna/docs/testing.md` for testing guidelines
+- See `fastapi_opentaberna/docs/config.md` for configuration module details
 
 ## Common Issues
 
