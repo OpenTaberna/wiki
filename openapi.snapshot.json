@@ -24,6 +24,11 @@
         "summary": "Product performance (admin)"
       }
     },
+    "/v1/admin/analytics/storefront": {
+      "get": {
+        "summary": "Shopper funnel (admin)"
+      }
+    },
     "/v1/admin/analytics/summary": {
       "get": {
         "summary": "Commercial summary (admin)"
@@ -104,6 +109,11 @@
     "/v1/admin/returns/{return_id}": {
       "patch": {
         "summary": "Update return request (admin)"
+      }
+    },
+    "/v1/analytics/events": {
+      "post": {
+        "summary": "Record anonymous storefront events"
       }
     },
     "/v1/customers/me": {

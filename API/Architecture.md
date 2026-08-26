@@ -33,6 +33,7 @@ persistence:
 | Inventory | `/v1/admin/inventory` | Stock levels and reservations |
 | Admin | `/v1/admin/orders` | Back-office fulfillment |
 | Analytics | `/v1/admin/analytics` | Commercial reporting over the order history |
+| Storefront analytics | `/v1/analytics` | Anonymous shopper telemetry ingest (public) |
 | Returns | `/v1/admin/returns` | Admin decisions on return requests |
 | Webhooks | `/v1/webhooks` | Inbound payment provider callbacks |
 | Health | `/health` | Liveness and readiness |
@@ -159,6 +160,27 @@ UTC belongs to the next day in Berlin, and bucketing on UTC would file a day's t
 against the wrong day — an error that looks like a data problem for weeks. See
 [Configuration](/Configuration).
 
+#### The shopper funnel
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| `GET` | `/v1/admin/analytics/storefront` | Sessions → product views → carts → checkouts → paid | admin |
+
+What happens *before* an order exists — which the order funnel above cannot see, because
+nothing has happened in the order tables yet. Fed by the public ingest endpoint below.
+
+Sessions are counted distinctly: ten product views from one shopper is one person
+considering a purchase, not ten.
+
+**The pre-order steps are a floor, not a count.** Blocked scripts, a tab closed before the
+batch flushed and disabled JavaScript all lose events. The `paid` step is read from the
+orders table and is exact. A funnel that undercounts its first step but not its last
+overstates the drop, so the two are labelled differently rather than presented as one
+continuous measurement. Real conversion is never worse than reported.
+
+Returns `enabled: false` with zeroes when the deployment is not collecting — "nobody
+visited" and "we are not counting" would otherwise look identical.
+
 #### What these numbers cannot tell you
 
 Stated plainly, because a reader will otherwise infer something stronger:
@@ -192,6 +214,36 @@ reserves against.
 | `GET` | `/v1/admin/inventory/{inventory_id}` | Get inventory item by UUID | admin |
 | `PATCH` | `/v1/admin/inventory/{inventory_id}` | Update stock | admin |
 | `DELETE` | `/v1/admin/inventory/{inventory_id}` | Delete inventory record | admin |
+
+### Storefront ingest — `/v1/analytics`
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| `POST` | `/v1/analytics/events` | Record anonymous shopper events | — |
+
+**Public by design**, because a shopper who has not signed in is exactly who this measures.
+Off unless `STOREFRONT_ANALYTICS_ENABLED` is set, returning `404` while off so a deployment
+that has not opted in does not advertise the capability. Returns `202`: the browser must
+neither wait on the result nor retry.
+
+Nothing stored identifies a person. There is no column for an IP address, a user agent, an
+email or a customer id, and query strings are stripped before storage — that is where
+personal data arrives by accident, in a share link or a redirect. The request schema
+forbids unknown fields, so a client sending `email` gets a `422` rather than having it
+quietly dropped.
+
+Because nothing identifies anyone and the browser stores only a per-tab session id, this
+requires no consent banner in the EU. That is the reason for the shape rather than a happy
+accident: a banner costs 40–60% of sessions to opt-outs, which would make the funnel it
+feeds mostly fiction.
+
+Being public, it is guarded accordingly — rate limited, batch capped at 50 events, a closed
+event vocabulary, and every field length-bounded. The worst an abusive client achieves is
+noise in a report.
+
+Browser timestamps outside ±24 hours of server time are discarded and counted in
+`rejected`. Clocks are wrong often enough that rejecting all skew would lose real data, and
+trusting all of it would let anyone write into a period already reported on.
 
 ### Webhooks and health
 
