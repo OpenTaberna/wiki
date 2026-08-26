@@ -129,6 +129,7 @@ system. It is one possible shop UI, not *the* shop UI — that is the point of t
 | Shipments | Tracking numbers and label files |
 | Returns | Customer return requests and admin decisions |
 | Analytics | Revenue, product performance, and the order and shopper funnels |
+| Telemetry | Uncaught frontend errors, and OpenTelemetry traces and metrics |
 | Health | Liveness and readiness probes |
 
 The full endpoint list is on the [API Architecture](/API/Architecture) page, and a live,

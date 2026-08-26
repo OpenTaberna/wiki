@@ -34,6 +34,8 @@ persistence:
 | Admin | `/v1/admin/orders` | Back-office fulfillment |
 | Analytics | `/v1/admin/analytics` | Commercial reporting over the order history |
 | Storefront analytics | `/v1/analytics` | Anonymous shopper telemetry ingest (public) |
+| Frontend errors | `/v1/telemetry` | Uncaught browser error reports (public ingest) |
+| Admin mail | `/v1/admin/mail` | Mailbox configuration and folders |
 | Returns | `/v1/admin/returns` | Admin decisions on return requests |
 | Webhooks | `/v1/webhooks` | Inbound payment provider callbacks |
 | Health | `/health` | Liveness and readiness |
@@ -244,6 +246,65 @@ noise in a report.
 Browser timestamps outside ±24 hours of server time are discarded and counted in
 `rejected`. Clocks are wrong often enough that rejecting all skew would lose real data, and
 trusting all of it would let anyone write into a period already reported on.
+
+### Frontend errors — `/v1/telemetry` and `/v1/admin/telemetry`
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| `POST` | `/v1/telemetry/errors` | Report uncaught browser errors | — |
+| `GET` | `/v1/admin/telemetry/errors` | Read them, grouped by frequency | admin |
+
+Traces and metrics see nothing that happens in a browser. A component that throws leaves the
+server returning `200` with healthy metrics while the shop is broken for a real customer —
+and for a shop, by the time someone reports it the sale is gone.
+
+Reporting is **public**, because storefront visitors are not signed in and an error before
+login is exactly the one worth catching. Off unless `FRONTEND_ERRORS_ENABLED` is set,
+returning `404` while off.
+
+**The user agent is reduced, never stored.** A raw agent string is a fingerprint, but "which
+browser?" is genuinely diagnostic, so it is reduced at the boundary to a family and major
+version — `Safari 18` reproduces a bug and does not recognise anyone. The reduction doubles
+as a filter: whatever a client sends, the output is a known family name and an integer.
+
+Errors are grouped by application, error class and message, **not by stack**: the same fault
+reached from two routes produces two stacks and is one bug. `affected_paths` carries the
+spread instead.
+
+> **This shows only what browsers managed to send.** An error that breaks a page badly
+> enough to stop the reporter is precisely the one that will not appear. Read a quiet list as
+> *no news*, never as *no errors*.
+
+Being public, it is rate limited harder than the analytics ingest — a component throwing in
+a render loop reports as fast as the browser can loop — with a batch cap, a closed `app`
+vocabulary, bounded fields and truncated stacks.
+
+### Admin mail — `/v1/admin/mail`
+
+Provider-neutral mailbox access for the back office, over IMAP and SMTP.
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| `GET` | `/v1/admin/mail/status` | Mailbox configuration status | admin |
+| `GET` | `/v1/admin/mail/folders` | List mail folders | admin |
+| `POST` | `/v1/admin/mail/folders` | Create a folder | admin |
+| `PATCH` | `/v1/admin/mail/folders/{folder}` | Rename a folder | admin |
+| `DELETE` | `/v1/admin/mail/folders/{folder}` | Delete a folder | admin |
+| `GET` | `/v1/admin/mail/folders/{folder}/messages` | List messages | admin |
+| `GET` | `/v1/admin/mail/folders/{folder}/messages/{uid}` | Read a message | admin |
+| `DELETE` | `/v1/admin/mail/folders/{folder}/messages/{uid}` | Permanently delete a message | admin |
+| `PATCH` | `/v1/admin/mail/folders/{folder}/messages/{uid}/flags` | Update message flags | admin |
+| `POST` | `/v1/admin/mail/folders/{folder}/messages/{uid}/move` | Move a message | admin |
+| `GET` | `/v1/admin/mail/folders/{folder}/messages/{uid}/attachments/{part_id}` | Download an attachment | admin |
+| `POST` | `/v1/admin/mail/messages` | Send a message | admin |
+
+Messages are addressed by IMAP `uid` within a folder, so a `uid` is only meaningful
+alongside the folder it came from. `GET /status` reports whether a mailbox is configured at
+all, which is the endpoint to check first when the others return nothing.
+
+This is separate from the transactional mail the API sends itself — order tracking
+notifications go out over the `SMTP_*` settings in [Configuration](/Configuration) and do
+not pass through here.
 
 ### Webhooks and health
 
