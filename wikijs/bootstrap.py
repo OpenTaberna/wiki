@@ -13,7 +13,8 @@ them over Wiki.js's own APIs instead:
 3. Points the Local File System storage target at the mounted repository and
    imports every Markdown page.
 4. Removes README, which documents the repository rather than the project.
-5. Verifies guests can read without logging in, and grants it if not.
+5. Rebuilds the sidebar so every page is reachable without knowing its URL.
+6. Verifies guests can read without logging in, and grants it if not.
 
 Every step is idempotent, so re-running only refreshes the content.
 
@@ -40,6 +41,32 @@ NOT_WIKI_PAGES = {"README"}
 
 GUEST_GROUP_ID = 2
 READ_PERMISSIONS = ["read:pages", "read:assets", "read:comments"]
+
+# Reading order for the sidebar: what somebody new should meet first, not
+# alphabetical. Pages not listed here are appended alphabetically, so adding a
+# page still shows up without touching this list.
+NAV_ORDER = [
+    "home",
+    "Getting-Started",
+    "Authorization",
+    "API/Architecture",
+    "Database/Architecture",
+    "Orders-and-Fulfillment",
+    "Configuration",
+    "Deployment",
+]
+
+NAV_ICONS = {
+    "home": "mdi-home",
+    "Getting-Started": "mdi-rocket-launch-outline",
+    "Authorization": "mdi-shield-key-outline",
+    "API/Architecture": "mdi-api",
+    "Database/Architecture": "mdi-database-outline",
+    "Orders-and-Fulfillment": "mdi-truck-outline",
+    "Configuration": "mdi-cog-outline",
+    "Deployment": "mdi-server",
+}
+DEFAULT_NAV_ICON = "mdi-file-document-outline"
 
 
 def log(message: str) -> None:
@@ -250,6 +277,59 @@ def remove_non_wiki_pages(token: str) -> None:
             log(f"removed non-wiki page: {page['path']}")
 
 
+def rebuild_navigation(token: str) -> None:
+    """
+    Replace the sidebar with one entry per published page.
+
+    Wiki.js seeds a static navigation list holding only Home. Left alone, every
+    other page is reachable by URL but linked from nowhere, so a reader who does
+    not already know the page names cannot find them.
+
+    Rebuilt from the pages that actually exist rather than from a hand-kept
+    list, so adding or removing a page is reflected on the next run.
+    """
+    pages = {page["path"]: page["title"] for page in list_pages(token)}
+    ordered = [p for p in NAV_ORDER if p in pages]
+    ordered += sorted(p for p in pages if p not in NAV_ORDER)
+
+    items = [
+        {
+            "id": f"page-{index}",
+            "kind": "link",
+            "label": pages[path],
+            "icon": NAV_ICONS.get(path, DEFAULT_NAV_ICON),
+            # The home page is reached at / rather than /home.
+            "targetType": "home" if path == "home" else "page",
+            "target": "/" if path == "home" else f"/{path}",
+            "visibilityMode": "all",
+            "visibilityGroups": [],
+        }
+        for index, path in enumerate(ordered)
+    ]
+
+    result = graphql(
+        """
+        mutation($tree: [NavigationTreeInput]!) {
+          navigation {
+            updateTree(tree: $tree) { responseResult { succeeded message } }
+          }
+        }
+        """,
+        token,
+        {"tree": [{"locale": "en", "items": items}]},
+    )["navigation"]["updateTree"]["responseResult"]
+    if not result["succeeded"]:
+        sys.exit(f"could not rebuild the navigation: {result['message']}")
+
+    # MIXED keeps the list above and still offers the page browser alongside it.
+    graphql(
+        "mutation { navigation { updateConfig(mode: MIXED) "
+        "{ responseResult { succeeded message } } } }",
+        token,
+    )
+    log(f"sidebar rebuilt with {len(items)} entries")
+
+
 def ensure_guest_read(token: str) -> None:
     group = graphql(
         """
@@ -307,6 +387,7 @@ def main() -> int:
     configure_site(token)
     import_content(token)
     remove_non_wiki_pages(token)
+    rebuild_navigation(token)
     ensure_guest_read(token)
 
     pages = list_pages(token)

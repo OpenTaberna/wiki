@@ -11,12 +11,17 @@ Fails when
 
 1. a page in the repository is missing from Wiki.js,
 2. a page does not return 200 to an anonymous request,
-3. a page's own title is absent from what is served, or
-4. anonymous access is bounced to a login screen.
+3. a page's own title is absent from what is served,
+4. anonymous access is bounced to a login screen, or
+5. a page is missing from the sidebar an anonymous visitor receives.
 
-Point 4 is the one that guards "no auth". Wiki.js answers a page a guest may not
-read with the login screen under a 200, so status alone proves nothing — the
-title has to actually be in the body.
+Point 4 guards "no auth". Wiki.js answers a page a guest may not read with the
+login screen under a 200, so status alone proves nothing — the title has to
+actually be in the body.
+
+Point 5 guards discoverability. Every page was once reachable by URL while the
+sidebar listed only Home (#5), which this check passed: reachable is not the
+same as discoverable, and testing only the first missed it.
 
 Override the base URL with WIKI_URL when not on the default port:
 
@@ -26,7 +31,9 @@ Override the base URL with WIKI_URL when not on the default port:
 
 from __future__ import annotations
 
+import base64
 import html
+import json
 import os
 import re
 import sys
@@ -41,6 +48,9 @@ WIKI_URL = os.environ.get("WIKI_URL", "http://localhost:3000").rstrip("/")
 NOT_WIKI_PAGES = {"README"}
 
 LOGIN_MARKERS = ("login-container", "loginBgUrl", "Sign In")
+
+# Wiki.js hands the theme its sidebar as base64 JSON on the page root element.
+SIDEBAR_RE = re.compile(r'sidebar="([^"]+)"')
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -94,6 +104,34 @@ def fetch(path: str) -> tuple[int, str]:
         )
 
 
+def sidebar_targets(body: str) -> set[str] | None:
+    """Targets in the sidebar an anonymous visitor was served, or None."""
+    match = SIDEBAR_RE.search(body)
+    if not match:
+        return None
+    try:
+        items = json.loads(base64.b64decode(match.group(1)))
+    except (ValueError, json.JSONDecodeError):
+        return None
+    return {item.get("t", "") for item in items}
+
+
+def check_navigation(body: str, expected: list[tuple[str, str]]) -> list[str]:
+    targets = sidebar_targets(body)
+    if targets is None:
+        return ["the page carries no sidebar — anonymous visitors get no navigation"]
+
+    failures = []
+    for path, title in expected:
+        target = "/" if path == "home" else f"/{path}"
+        if target not in targets:
+            failures.append(
+                f"{title!r} ({target}) is not in the sidebar — "
+                f"reachable by URL, but nothing links to it"
+            )
+    return failures
+
+
 def main() -> int:
     expected = pages()
     if not expected:
@@ -121,6 +159,9 @@ def main() -> int:
         if title and title not in body and html.escape(title) not in body:
             failures.append(f"/{path}: served 200 but the title {title!r} is missing")
 
+        if path == "home":
+            failures.extend(check_navigation(body, expected))
+
     print(f"Checked {len(expected)} pages against {WIKI_URL}.")
 
     if failures:
@@ -128,9 +169,14 @@ def main() -> int:
         for failure in failures:
             print(f"  FAIL  {failure}")
         print("\nThe Wiki.js stack is not serving this repository anonymously.")
+        print("Re-running the bootstrap usually fixes configuration drift:")
+        print("  docker compose run --rm --no-deps bootstrap")
         return 1
 
-    print("OK — every page is served, and no page asks for a login.")
+    print(
+        "OK — every page is served, listed in the sidebar, "
+        "and no page asks for a login."
+    )
     return 0
 
 
