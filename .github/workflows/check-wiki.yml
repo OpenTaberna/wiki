@@ -1,0 +1,21 @@
+name: Check wiki matches the API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Wiki drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Check every endpoint is documented and every documented path exists
+        run: python3 tools/check_wiki.py

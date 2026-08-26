@@ -1,360 +1,317 @@
 ---
 title: Database Architecture
-description: Holds Ideas for a possible Database Architecture
+description: The schema as it is actually built
 published: true
-date: 2025-11-19T20:59:12.870Z
-tags: architecture, database
+date: 2026-08-26T12:00:00.000Z
+tags: architecture, database, schema, postgresql
 editor: markdown
 dateCreated: 2025-11-19T20:45:46.121Z
 ---
 
 # Database Architecture
 
-To improve indexation and performance I suggest the following layout. (See the Item description in [API Architecture](/API/Architecture) to have a better understanding of the data set we are thinking about).
+The store runs on **PostgreSQL 17**. This page documents the schema that is actually in
+the database.
 
-**Diagram**
-Sadly the wiki can not display it. Therefore please copy paste the mermaid section into any markdown convertor and have a look (I like Obsidian for that). Here is a picture of the diagram.
+> **This page previously described a different schema.** It proposed `shops`,
+> `categories`, `item_categories`, `item_media`, `attributes`, `item_attributes` and
+> `item_events` — a fully normalised catalogue. None of those tables were ever built. What
+> shipped keeps the item's nested detail in `JSONB` columns instead. The old design is
+> discussed under [The road not taken](#the-road-not-taken) because the trade-off is worth
+> understanding, but it is a proposal, not a description.
 
+## The tables
 
-![database_diagram_layout.jpg](/database/database_diagram_layout.jpg)
+Twelve tables, in four groups:
 
 ```mermaid
 erDiagram
+    CUSTOMERS ||--o{ ADDRESSES : "has"
+    CUSTOMERS ||--o{ ORDERS : "places"
+    CUSTOMERS ||--o{ RETURNS : "requests"
 
-    SHOPS {
-        uuid id PK
-        text name
-        timestamptz created_at
-    }
+    ORDERS ||--o{ ORDER_ITEMS : "contains"
+    ORDERS ||--|| PAYMENTS : "paid by"
+    ORDERS ||--|| SHIPMENTS : "shipped as"
+    ORDERS ||--|| RETURNS : "returned as"
+    ORDERS ||--o{ STOCK_RESERVATIONS : "reserves"
 
-    CATEGORIES {
-        uuid id PK
-        uuid shop_id FK
-        text name
-        text slug
-        uuid parent_id FK
-        int position
-        timestamptz created_at
-        timestamptz updated_at
-    }
+    INVENTORY_ITEMS ||--o{ STOCK_RESERVATIONS : "reserved from"
 
     ITEMS {
+        uuid uuid PK
+        varchar sku UK
+        varchar status
+        varchar name
+        varchar slug UK
+        jsonb price
+        jsonb inventory
+        jsonb media
+        jsonb shipping
+        jsonb attributes
+        jsonb identifiers
+        jsonb categories
+        jsonb custom
+        jsonb system
+    }
+
+    CUSTOMERS {
         uuid id PK
-        uuid shop_id FK
-        uuid uuid UNIQUE
-        text sku UNIQUE
-        text status
-        text name
-        text slug
-        text short_description
-        text description
-        text brand
-
-        bigint price_amount
-        char(3) price_currency
-        boolean price_includes_tax
-        bigint price_original_amount
-        text tax_class
-
-        int stock_quantity
-        text stock_status
-        boolean allow_backorder
-
-        text main_image_url
-
-        boolean is_physical
-        numeric weight_value
-        text weight_unit
-        numeric dim_width
-        numeric dim_height
-        numeric dim_length
-        text dim_unit
-        text shipping_class
-
-        text barcode
-        text manufacturer_part_number
-        char(2) country_of_origin
-
-        jsonb custom_data
-
-        timestamptz created_at
-        timestamptz updated_at
-        text created_by
-        text updated_by
+        varchar keycloak_user_id UK
+        varchar email UK
+        varchar first_name
+        varchar last_name
+        varchar phone
     }
 
-    ITEM_CATEGORIES {
-        uuid item_id FK
-        uuid category_id FK
-    }
-
-    ITEM_MEDIA {
+    ADDRESSES {
         uuid id PK
-        uuid item_id FK
-        text url
-        int position
-        text alt_text
+        uuid customer_id FK
+        varchar street
+        varchar city
+        varchar zip_code
+        varchar country
+        boolean is_default
     }
 
-    ATTRIBUTES {
+    ORDERS {
         uuid id PK
-        uuid shop_id FK
-        text code
-        text name
-        text data_type
-        timestamptz created_at
+        uuid customer_id FK
+        varchar status
+        bigint total_amount
+        varchar currency
+        timestamptz deleted_at
     }
 
-    ITEM_ATTRIBUTES {
-        uuid item_id FK
-        uuid attribute_id FK
-        text value_text
-        numeric value_number
-        boolean value_bool
-    }
-
-    ITEM_EVENTS {
+    ORDER_ITEMS {
         uuid id PK
-        uuid item_id FK
-        text event_type
+        uuid order_id FK
+        varchar sku
+        int quantity
+        bigint unit_price
+    }
+
+    PAYMENTS {
+        uuid id PK
+        uuid order_id FK,UK
+        varchar provider
+        varchar provider_reference UK
+        bigint amount
+        varchar status
+    }
+
+    INVENTORY_ITEMS {
+        uuid id PK
+        varchar sku UK
+        int on_hand
+        int reserved
+    }
+
+    STOCK_RESERVATIONS {
+        uuid id PK
+        uuid inventory_item_id FK
+        uuid order_id
+        int quantity
+        timestamptz expires_at
+        varchar status
+    }
+
+    SHIPMENTS {
+        uuid id PK
+        uuid order_id FK,UK
+        varchar carrier
+        varchar tracking_number
+        text label_url
+        varchar status
+    }
+
+    RETURNS {
+        uuid id PK
+        uuid order_id FK,UK
+        uuid customer_id FK
+        varchar status
+        text reason
+        text admin_note
+    }
+
+    WEBHOOK_EVENTS {
+        uuid id PK
+        varchar provider
+        varchar event_id
         jsonb payload
-        timestamptz created_at
-        text user_id
+        timestamptz processed_at
     }
 
-    %% Relationships
-
-    SHOPS ||--o{ CATEGORIES : "has many"
-    SHOPS ||--o{ ITEMS : "has many"
-    SHOPS ||--o{ ATTRIBUTES : "has many"
-
-    CATEGORIES ||--o{ CATEGORIES : "parent_of (self-rel)"
-    ITEMS ||--o{ ITEM_CATEGORIES : "categorized_by"
-    CATEGORIES ||--o{ ITEM_CATEGORIES : "contains_items"
-
-    ITEMS ||--o{ ITEM_MEDIA : "has media"
-    ITEMS ||--o{ ITEM_ATTRIBUTES : "has attributes"
-    ATTRIBUTES ||--o{ ITEM_ATTRIBUTES : "used by"
-
-    ITEMS ||--o{ ITEM_EVENTS : "has events"
-
+    OUTBOX_EVENTS {
+        uuid id PK
+        varchar event_type
+        text payload
+        varchar status
+        varchar arq_job_id
+        int attempts
+    }
 ```
 
+Every table carries `created_at` and `updated_at` (`timestamptz`, defaulting to `now()`).
+`orders` additionally carries `deleted_at` — it is the one table that soft-deletes,
+because a cancelled order is a business record you may not destroy.
 
+## Catalogue
 
+### `items`
 
+The catalogue. Scalar, searchable fields are real columns; the nested blocks from the
+[item shape](/API/Architecture#the-item-shape) are `JSONB`.
 
+| Column | Type | Notes |
+|---|---|---|
+| `uuid` | `uuid` | Primary key |
+| `sku` | `varchar(100)` | Unique |
+| `slug` | `varchar(255)` | Unique — the URL-facing identifier |
+| `status` | `varchar(20)` | `draft` / `active` / `archived`, indexed |
+| `name` | `varchar(255)` | Indexed |
+| `brand` | `varchar(100)` | Indexed |
+| `short_description` | `varchar(500)` | |
+| `description` | `text` | |
+| `categories`, `price`, `media`, `inventory`, `shipping`, `attributes`, `identifiers`, `custom`, `system` | `jsonb` | Not null |
 
-Table for Categories:
-```sql
-CREATE TABLE categories (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    shop_id     UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+Indexed on `sku` (unique), `slug` (unique), `status`, `name` and `brand` — the fields you
+filter and sort a shop listing by. Anything inside a `JSONB` column is not covered by
+those indexes; a query filtering on `price->>'amount'` does a sequential scan unless you
+add an expression index for it.
 
-    name        TEXT NOT NULL,
-    slug        TEXT NOT NULL,
-    parent_id   UUID REFERENCES categories(id),
+Note there is no `shop_id` anywhere. The schema is single-tenant: one deployment, one
+shop. Multi-tenancy would be a schema change, not a configuration change.
 
-    position    INT NOT NULL DEFAULT 0,    -- for sorting
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+## Customers
 
-CREATE UNIQUE INDEX ux_categories_shop_slug
-    ON categories (shop_id, slug);
-```
+### `customers`
 
-Table to store essential item data
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `keycloak_user_id` | `varchar(255)` | Unique — the `sub` claim from the token |
+| `email` | `varchar(255)` | Unique |
+| `first_name`, `last_name` | `varchar(100)` | Not null |
+| `phone` | `varchar(32)` | Nullable |
 
-```sql
-CREATE TABLE items (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    shop_id     UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+`keycloak_user_id` is the join back to the identity provider. Keycloak owns credentials
+and roles; this table owns everything commercial about the person. That split is why
+wiping the Keycloak volume orphans customer rows — the profile survives, the login does
+not.
 
-    uuid        UUID NOT NULL UNIQUE,             -- external UUID if you want it separate
-    sku         TEXT UNIQUE,                      -- can be NULL, but unique if present
-    status      TEXT NOT NULL CHECK (status IN ('draft', 'active', 'archived')),
+### `addresses`
 
-    name        TEXT NOT NULL,
-    slug        TEXT NOT NULL,
-    short_description TEXT,
-    description TEXT,
-    brand       TEXT,
+Belongs to a customer, cascade-deleted with them. `country` is a 2-character ISO code and
+`is_default` marks the one used at checkout.
 
-    -- Price
-    price_amount        BIGINT NOT NULL,         -- cents
-    price_currency      CHAR(3) NOT NULL,        -- 'EUR', 'USD', ...
-    price_includes_tax  BOOLEAN NOT NULL DEFAULT TRUE,
-    price_original_amount BIGINT,                -- NULL if no discount
-    tax_class           TEXT NOT NULL DEFAULT 'standard',
+## Orders, payment and stock
 
-    -- Inventory
-    stock_quantity      INT NOT NULL DEFAULT 0,
-    stock_status        TEXT NOT NULL CHECK (stock_status IN ('in_stock', 'out_of_stock', 'preorder', 'backorder')),
-    allow_backorder     BOOLEAN NOT NULL DEFAULT FALSE,
+### `orders`
 
-    -- Media
-    main_image_url      TEXT,
+| Column | Type | Notes |
+|---|---|---|
+| `status` | `varchar(25)` | Defaults to `draft`, indexed |
+| `total_amount` | `bigint` | Minor units. `CHECK (total_amount >= 0)` |
+| `currency` | `varchar(3)` | ISO 4217 |
+| `deleted_at` | `timestamptz` | Soft delete |
 
-    -- Shipping
-    is_physical         BOOLEAN NOT NULL DEFAULT TRUE,
-    weight_value        NUMERIC(12,4),
-    weight_unit         TEXT,
-    dim_width           NUMERIC(12,4),
-    dim_height          NUMERIC(12,4),
-    dim_length          NUMERIC(12,4),
-    dim_unit            TEXT,
-    shipping_class      TEXT,
+Money is `bigint` in minor units everywhere in this schema — cents, never a float. See
+[Orders and Fulfillment](/Orders-and-Fulfillment) for the status machine.
 
-    -- Identifiers
-    barcode                 TEXT,
-    manufacturer_part_number TEXT,
-    country_of_origin       CHAR(2),             -- ISO country code, e.g. 'DE'
+### `order_items`
 
-    -- Custom
-    custom_data         JSONB,                   -- for plugins/free-form data
+A line on an order, cascade-deleted with it. Carries `unit_price` as a **snapshot**, not a
+lookup — repricing an item must not silently rewrite what somebody already paid.
+Constrained by `CHECK (quantity > 0)` and `CHECK (unit_price >= 0)`.
 
-    -- System
-    log_table_ref       UUID,                    -- references some other log table if you want
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by          TEXT,                    -- keycloak user ID
-    updated_by          TEXT
-);
+### `payments`
 
--- URL friendly & shop-scoped: one slug per shop
-CREATE UNIQUE INDEX ux_items_shop_slug
-    ON items (shop_id, slug);
+One payment per order, enforced by a unique constraint on `order_id`. `provider_reference`
+(the Stripe payment intent id) is also unique, which is what makes webhook processing safe
+to retry.
 
--- Useful query indexes
-CREATE INDEX ix_items_shop_status
-    ON items (shop_id, status);
+### `inventory_items` and `stock_reservations`
 
-CREATE INDEX ix_items_shop_brand
-    ON items (shop_id, brand);
+Authoritative stock, deliberately separate from the `inventory` block on an item.
 
-CREATE INDEX ix_items_price
-    ON items (shop_id, price_amount);
-
-CREATE INDEX ix_items_stock_status
-    ON items (shop_id, stock_status);
-
-```
-
-
-Model join relationship between the item and category table:
-
+`inventory_items` holds `on_hand` and `reserved` under three check constraints:
 
 ```sql
-CREATE TABLE item_categories (
-    item_id     UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-    PRIMARY KEY (item_id, category_id)
-);
-
-CREATE INDEX ix_item_categories_category
-    ON item_categories (category_id);
-
+CHECK (on_hand >= 0)
+CHECK (reserved >= 0)
+CHECK (on_hand >= reserved)
 ```
 
-Table for the Media Gallery:
+That third one is the interesting one. It makes overselling a database error rather than a
+race the application has to win — you cannot reserve stock that is not there, however the
+code is written or however many requests arrive at once.
 
-```sql
-CREATE TABLE item_media (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    item_id     UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-    url         TEXT NOT NULL,
-    position    INT NOT NULL DEFAULT 0,   -- 0,10,20,... for reordering
-    alt_text    TEXT
-);
+`stock_reservations` holds a claim on stock with an `expires_at`, indexed so the sweeper
+can find lapsed ones cheaply. A reservation is taken at checkout and either committed on
+payment or released on failure or expiry. `reservation_ttl_minutes` sets the window.
 
-CREATE INDEX ix_item_media_item
-    ON item_media (item_id);
-```
+## Fulfillment and integration
 
-Attribute definition table
-```sql
-CREATE TABLE attributes (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    shop_id     UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+### `shipments`
 
-    code        TEXT NOT NULL,               -- e.g. 'color', 'material'
-    name        TEXT NOT NULL,               -- display name
-    data_type   TEXT NOT NULL CHECK (data_type IN ('text', 'number', 'boolean')),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+One shipment per order, enforced by a unique constraint on `order_id` — the same rule the
+[roadmap](/Orders-and-Fulfillment) calls "one shipment label per order". `label_url` points
+at the object store, not at bytes in the database.
 
-CREATE UNIQUE INDEX ux_attributes_shop_code
-    ON attributes (shop_id, code);
+### `returns`
 
-```
+One return per order, unique on `order_id`. `reason` comes from the customer, `admin_note`
+from whoever decided. Both the order and the customer are `ON DELETE RESTRICT`: a return
+is a financial record and must not vanish with its parent.
 
+### `webhook_events`
 
-Item_Attribute table:
+Every inbound provider event, with a unique constraint on `(provider, event_id)`.
 
-```sql
+**That constraint is the idempotency mechanism.** Stripe will redeliver, and a duplicate
+`payment_succeeded` must not mark an order paid twice or commit stock twice. The insert
+fails on the second attempt, the handler returns `200`, nothing happens. `processed_at`
+being null distinguishes a received event from a handled one.
 
-CREATE TABLE item_attributes (
-    item_id     UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-    attribute_id UUID NOT NULL REFERENCES attributes(id) ON DELETE CASCADE,
+### `outbox_events`
 
-    value_text  TEXT,
-    value_number NUMERIC(20,4),
-    value_bool  BOOLEAN,
+The transactional outbox. `event_type` and a serialised `payload`, plus `status`,
+`arq_job_id` and an `attempts` counter, indexed on `(status, created_at)` for the poller's
+sweep.
 
-    PRIMARY KEY (item_id, attribute_id)
-);
+The point is that a state change and its follow-up job commit in **one transaction**. The
+API never enqueues to Redis directly, so there is no window in which the database says
+"paid" but the label job was lost because the process died. See
+[the outbox](/Orders-and-Fulfillment#the-outbox).
 
-CREATE INDEX ix_item_attributes_attr
-    ON item_attributes (attribute_id);
-```
+`attempts` and `OUTBOX_MAX_ATTEMPTS` bound retries. Exhausting them sets `FAILED`, which
+means *the event never reached the queue* — distinct from a job that ran and exhausted its
+own retries, which is `DEAD`.
 
+---
 
+## The road not taken
 
+The original proposal on this page normalised the catalogue: `categories` and
+`item_categories` for a category tree, `item_media` for the gallery, `attributes` and
+`item_attributes` for an EAV attribute model, `item_events` for an audit log, and a
+`shops` table making the whole thing multi-tenant.
 
-For later the System log and event table:
+What shipped collapses those into `JSONB` columns on `items`. The trade:
 
-```sql
-CREATE TABLE item_events (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    item_id     UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-    event_type  TEXT NOT NULL,          -- 'created', 'updated', 'price_changed', ...
-    payload     JSONB,                  -- old/new values, diff, etc.
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    user_id     TEXT                    -- Keycloak ID if available
-);
+**What the JSONB version buys.** One insert writes a whole product. Reading one is one row
+with no joins. A plugin can attach arbitrary data under `custom` without a migration —
+which is close to the point of the project, since the catalogue is meant to be extended by
+people who are not touching the core.
 
-CREATE INDEX ix_item_events_item
-    ON item_events (item_id);
+**What it costs.** No referential integrity on categories: they are strings in an array,
+so nothing stops a typo creating a category of one. No efficient faceted search — filtering
+across attribute values means either expression indexes per attribute or a sequential scan.
+No audit trail; `item_events` does not exist, and `updated_at` is all you get.
 
-CREATE INDEX ix_item_events_type
-    ON item_events (event_type);
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+For a single-tenant shop with a catalogue that fits comfortably in memory, that is a
+reasonable trade. It stops being reasonable when you want faceted search across a large
+catalogue, or category management that cannot be broken by a typo. If OpenTaberna grows
+into either, `categories` and `item_attributes` are the first two tables to build, and the
+proposal above is a decent starting point for them.

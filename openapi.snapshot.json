@@ -1,0 +1,174 @@
+{
+  "info": {
+    "title": "OpenTaberna API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness check"
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "summary": "Readiness check"
+      }
+    },
+    "/v1/admin/inventory/": {
+      "get": {
+        "summary": "List inventory items (admin)"
+      },
+      "post": {
+        "summary": "Create inventory record (admin)"
+      }
+    },
+    "/v1/admin/inventory/by-sku/{sku}": {
+      "get": {
+        "summary": "Get inventory item by SKU (admin)"
+      }
+    },
+    "/v1/admin/inventory/{inventory_id}": {
+      "delete": {
+        "summary": "Delete inventory record (admin)"
+      },
+      "get": {
+        "summary": "Get inventory item by UUID (admin)"
+      },
+      "patch": {
+        "summary": "Update inventory stock (admin)"
+      }
+    },
+    "/v1/admin/orders/": {
+      "get": {
+        "summary": "List all orders (admin)"
+      }
+    },
+    "/v1/admin/orders/pick-list": {
+      "get": {
+        "summary": "Batch pick list (admin)"
+      }
+    },
+    "/v1/admin/orders/{order_id}": {
+      "get": {
+        "summary": "Get order detail (admin)"
+      }
+    },
+    "/v1/admin/orders/{order_id}/label": {
+      "get": {
+        "summary": "Download carrier label (admin)"
+      },
+      "post": {
+        "summary": "Trigger DHL label job (admin)"
+      }
+    },
+    "/v1/admin/orders/{order_id}/packing-slip": {
+      "get": {
+        "summary": "Packing slip (admin)"
+      }
+    },
+    "/v1/admin/orders/{order_id}/ship": {
+      "post": {
+        "summary": "Mark order as shipped (admin)"
+      }
+    },
+    "/v1/admin/orders/{order_id}/shipments": {
+      "post": {
+        "summary": "Create shipment (admin)"
+      }
+    },
+    "/v1/admin/orders/{order_id}/status": {
+      "patch": {
+        "summary": "Override order status (admin)"
+      }
+    },
+    "/v1/admin/returns/{return_id}": {
+      "patch": {
+        "summary": "Update return request (admin)"
+      }
+    },
+    "/v1/customers/me": {
+      "get": {
+        "summary": "Get my profile"
+      },
+      "patch": {
+        "summary": "Update my profile"
+      }
+    },
+    "/v1/customers/me/addresses": {
+      "get": {
+        "summary": "List my addresses"
+      },
+      "post": {
+        "summary": "Create an address"
+      }
+    },
+    "/v1/customers/me/addresses/{address_id}": {
+      "delete": {
+        "summary": "Delete an address"
+      },
+      "patch": {
+        "summary": "Update an address"
+      }
+    },
+    "/v1/items/": {
+      "get": {
+        "summary": "List items"
+      },
+      "post": {
+        "summary": "Create a new item"
+      }
+    },
+    "/v1/items/by-sku/{sku}": {
+      "get": {
+        "summary": "Get item by SKU"
+      }
+    },
+    "/v1/items/{item_uuid}": {
+      "delete": {
+        "summary": "Delete item"
+      },
+      "get": {
+        "summary": "Get item by UUID"
+      },
+      "patch": {
+        "summary": "Update item"
+      }
+    },
+    "/v1/items/{item_uuid}/image": {
+      "get": {
+        "summary": "Get the product image"
+      },
+      "put": {
+        "summary": "Upload the product image (admin)"
+      }
+    },
+    "/v1/orders/": {
+      "post": {
+        "summary": "Create a draft order"
+      }
+    },
+    "/v1/orders/{order_id}": {
+      "delete": {
+        "summary": "Cancel a draft order"
+      },
+      "get": {
+        "summary": "Get order by ID"
+      }
+    },
+    "/v1/orders/{order_id}/checkout": {
+      "post": {
+        "summary": "Start checkout"
+      }
+    },
+    "/v1/orders/{order_id}/returns": {
+      "post": {
+        "summary": "Request a return"
+      }
+    },
+    "/v1/webhooks/stripe": {
+      "post": {
+        "summary": "Stripe payment webhook"
+      }
+    }
+  }
+}
