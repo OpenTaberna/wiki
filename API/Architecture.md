@@ -32,6 +32,7 @@ persistence:
 | Orders | `/v1/orders` | Draft orders, checkout, cancellation, return requests |
 | Inventory | `/v1/admin/inventory` | Stock levels and reservations |
 | Admin | `/v1/admin/orders` | Back-office fulfillment |
+| Analytics | `/v1/admin/analytics` | Commercial reporting over the order history |
 | Returns | `/v1/admin/returns` | Admin decisions on return requests |
 | Webhooks | `/v1/webhooks` | Inbound payment provider callbacks |
 | Health | `/health` | Liveness and readiness |
@@ -111,6 +112,71 @@ See [Orders and Fulfillment](/Orders-and-Fulfillment).
 | `GET` | `/v1/admin/orders/{order_id}/packing-slip` | Packing slip | admin |
 | `POST` | `/v1/admin/orders/{order_id}/ship` | Mark order as shipped | admin |
 | `PATCH` | `/v1/admin/returns/{return_id}` | Approve, reject or complete a return | admin |
+
+### Analytics — `/v1/admin/analytics`
+
+Commercial reporting, computed in SQL over **all** orders rather than a recent sample.
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| `GET` | `/v1/admin/analytics/summary` | Revenue, refunds, AOV, units, vs the previous period | admin |
+| `GET` | `/v1/admin/analytics/timeseries` | The same figures bucketed by day, week or month | admin |
+| `GET` | `/v1/admin/analytics/products` | Per-SKU units, revenue, return rate, unsold stock | admin |
+| `GET` | `/v1/admin/analytics/funnel` | Where orders stop | admin |
+
+All four take optional `from` and `to` calendar dates, inclusive, defaulting to the last 30
+days. A window longer than five years is refused: the figures are computed live rather than
+from a rollup table, so an unbounded range is a slow query waiting to happen.
+
+#### What counts as revenue
+
+These are choices, not facts, so they are written down rather than left implicit in a query:
+
+| Term | Definition |
+|---|---|
+| Gross revenue | Orders in `paid`, `ready_to_ship` or `shipped` |
+| Refunded | Orders in `refunded` — **whole-order only** |
+| Net revenue | Gross less refunded |
+| Average order value | Gross divided by revenue-producing orders |
+| Units | Line quantities on revenue-producing orders |
+
+Never counted: `draft`, `pending_payment`, `cancelled`, and anything soft-deleted.
+
+#### Money is grouped by currency
+
+Every money-bearing response is a **list keyed by currency**, not a single figure.
+`orders.currency` permits more than one, and a total summed across currencies is not
+slightly wrong — it is meaningless. For the usual single-currency shop the list has one
+entry and reads like a plain number.
+
+A client must not add these together. The response shape exists to make that mistake
+visible rather than silent.
+
+#### Days are cut in the shop's timezone
+
+Buckets use `SHOP_TIMEZONE` (default `Europe/Berlin`), not UTC. An order placed at 23:30
+UTC belongs to the next day in Berlin, and bucketing on UTC would file a day's takings
+against the wrong day — an error that looks like a data problem for weeks. See
+[Configuration](/Configuration).
+
+#### What these numbers cannot tell you
+
+Stated plainly, because a reader will otherwise infer something stronger:
+
+- **The funnel is an order funnel, not a visitor funnel.** It begins at order creation and
+  cannot see shoppers who browsed without ordering. Visitor conversion needs session data
+  the API does not collect.
+- **Partial refunds are not modelled.** `orders.status = refunded` is all-or-nothing, so
+  refund figures will not reconcile against a partially refunded Stripe charge.
+- **Per-SKU return rate is an upper bound.** Returns are recorded per order, not per line,
+  so a return on a two-line order counts against both SKUs.
+- **Product revenue need not equal order revenue.** Product figures sum line values; an
+  order total may carry shipping or adjustments belonging to no line.
+
+Checkout is counted from the `payments` table rather than from `orders.status`. Status
+records only where an order is *now*, so a cancelled order is indistinguishable from one
+that never reached checkout, and an order that shipped then was refunded no longer says it
+shipped. A payment row is written when checkout starts and survives whatever follows.
 
 ### Inventory — `/v1/admin/inventory`
 

@@ -14,6 +14,26 @@
         "summary": "Readiness check"
       }
     },
+    "/v1/admin/analytics/funnel": {
+      "get": {
+        "summary": "Order funnel (admin)"
+      }
+    },
+    "/v1/admin/analytics/products": {
+      "get": {
+        "summary": "Product performance (admin)"
+      }
+    },
+    "/v1/admin/analytics/summary": {
+      "get": {
+        "summary": "Commercial summary (admin)"
+      }
+    },
+    "/v1/admin/analytics/timeseries": {
+      "get": {
+        "summary": "Revenue and volume over time (admin)"
+      }
+    },
     "/v1/admin/inventory/": {
       "get": {
         "summary": "List inventory items (admin)"

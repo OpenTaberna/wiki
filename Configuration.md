@@ -157,6 +157,17 @@ outside Compose or against a Dashboard-managed endpoint.
 Too short and a slow payment loses its reservation mid-flow; too long and abandoned carts
 hold stock nobody can buy.
 
+## Analytics
+
+| Setting | Default | Description |
+|---|---|---|
+| `SHOP_TIMEZONE` | `Europe/Berlin` | IANA timezone the shop trades in |
+
+Analytics buckets days in this zone rather than UTC, so "today" matches the operator's day.
+Leave it wrong and evening orders land on the following day for any shop east of Greenwich —
+the figures stay internally consistent, which is what makes it hard to notice. An unknown
+zone is rejected at request time with a `422` naming the value, rather than a `500`.
+
 ## Object storage — MinIO / S3
 
 | Setting | Default | Description |
