@@ -42,7 +42,7 @@ WIKI_PORT=3030 docker compose up -d
 |---|---|
 | `wiki` | Wiki.js 2.5 |
 | `db` | PostgreSQL 16, its backing store |
-| `bootstrap` | Runs once and exits — completes setup, imports the pages, confirms guest read |
+| `bootstrap` | Runs once and exits — completes setup, imports the pages, builds the sidebar, confirms guest read |
 
 Your checkout is mounted **read-only**, so Wiki.js can import from it but never writes back
 and never dirties your working tree.
@@ -60,8 +60,12 @@ until you re-import:
 docker compose run --rm --no-deps bootstrap
 ```
 
-That is idempotent — it re-imports the content and repairs the configuration if anything
-has drifted.
+That is idempotent — it re-imports the content, rebuilds the sidebar and repairs the
+configuration if anything has drifted.
+
+The sidebar is generated from the pages that exist, in the reading order set by `NAV_ORDER`
+in `wikijs/bootstrap.py`. A new page appears automatically; add it to that list to place it
+deliberately rather than alphabetically at the end.
 
 ### Starting over
 
@@ -107,8 +111,9 @@ docker compose up -d
 python3 tools/check_wikijs.py
 ```
 
-It fails when a page is missing, returns a non-200, or bounces an anonymous visitor to the
-login screen.
+It fails when a page is missing, returns a non-200, bounces an anonymous visitor to the
+login screen, or is absent from the sidebar that visitor receives — reachable by URL is not
+the same as discoverable.
 
 CI runs both on every push and pull request.
 
