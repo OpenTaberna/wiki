@@ -1,0 +1,66 @@
+# Self-hosted Wiki.js serving this repository's pages.
+#
+#   docker compose up -d      →  http://localhost:3000
+#
+# No login: the setup wizard is completed automatically and guests can read
+# every page anonymously. See README.md.
+#
+# Port 3000 already taken?  WIKI_PORT=3030 docker compose up -d
+
+name: opentaberna-wiki
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: wiki
+      POSTGRES_USER: wiki
+      # Local-only database, never exposed outside the compose network.
+      POSTGRES_PASSWORD: wiki
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wiki -d wiki"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  wiki:
+    image: ghcr.io/requarks/wiki:2.5
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: wiki
+      DB_USER: wiki
+      DB_PASS: wiki
+    volumes:
+      # The repository itself, read-only. Wiki.js imports the Markdown from
+      # here; it never writes back, so your checkout stays clean.
+      - .:/wiki-content:ro
+    ports:
+      - "${WIKI_PORT:-3000}:3000"
+    restart: unless-stopped
+
+  # Runs once, then exits. Completes the setup wizard, imports the pages and
+  # confirms guests can read them. Safe to re-run — see "Refreshing" in README.
+  bootstrap:
+    image: python:3.13-alpine
+    depends_on:
+      - wiki
+    environment:
+      WIKI_URL: http://wiki:3000
+      WIKI_CONTENT_PATH: /wiki-content
+      ADMIN_EMAIL: admin@opentaberna.local
+      ADMIN_PASSWORD: opentaberna-local-admin
+    volumes:
+      - ./wikijs/bootstrap.py:/bootstrap.py:ro
+    command: ["python3", "/bootstrap.py"]
+    restart: "no"
+
+volumes:
+  db_data:

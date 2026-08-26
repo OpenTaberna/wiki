@@ -1,4 +1,4 @@
-name: Check wiki matches the API
+name: Check wiki
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  check:
-    name: Wiki drift check
+  drift:
+    name: Wiki matches the API
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,3 +19,32 @@ jobs:
 
       - name: Check every endpoint is documented and every documented path exists
         run: python3 tools/check_wiki.py
+
+  wikijs:
+    name: Wiki.js stack serves the pages with no login
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Start Wiki.js and PostgreSQL
+        run: docker compose up -d db wiki
+
+      # Runs in the foreground so a bootstrap failure fails the job here,
+      # rather than showing up later as an empty wiki.
+      - name: Bootstrap
+        run: docker compose run --rm bootstrap
+
+      - name: Check every page is served anonymously
+        run: python3 tools/check_wikijs.py
+
+      - name: Logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
