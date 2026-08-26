@@ -2,7 +2,7 @@
 title: Getting Started
 description: Quick start guide for OpenTaberna
 published: true
-date: 2025-12-06T15:30:00.000Z
+date: 2026-08-26T12:00:00.000Z
 tags: getting-started, quickstart, setup
 editor: markdown
 dateCreated: 2025-12-06T15:30:00.000Z
@@ -10,208 +10,248 @@ dateCreated: 2025-12-06T15:30:00.000Z
 
 # Getting Started
 
-This guide will help you get OpenTaberna up and running in minutes.
+This guide gets the whole OpenTaberna stack running on your machine: the API and its
+backing services, the back-office UI, and the storefront.
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
-
 - **Docker** (20.10+) and **Docker Compose** (2.0+)
 - **Git**
+- **Node.js** 22.22+, 24.15+ or 26+ — only needed to run the admin UI from source
 - At least 4GB of available RAM
 
-## Quick Start
+## 1. Clone the repositories
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/PhilippTheServer/opentaberna.git
-cd opentaberna
-```
-
-### 2. Start the Development Environment
+The project is four repositories, not one. Put them side by side:
 
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+mkdir opentaberna && cd opentaberna
+git clone https://github.com/OpenTaberna/fastapi.git
+git clone https://github.com/OpenTaberna/frontend.git
+git clone https://github.com/OpenTaberna/admin_frontend.git
+git clone https://github.com/OpenTaberna/wiki.git
 ```
 
-This will start:
-- PostgreSQL Database
-- FastAPI Backend (with auto-reload)
-- Keycloak (User Management)
-- Redis (Cache & Queue)
+Everything below assumes you are in one of those directories.
 
-### 3. Access the Services
+## 2. Start the backend stack
 
-Once all containers are running:
+```bash
+cd fastapi
+cp .env.example .env
+docker compose -f docker-compose.dev.yml up -d
+```
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| **API Documentation** | http://localhost:8000/docs | - |
-| **API (OpenAPI JSON)** | http://localhost:8000/openapi.json | - |
-| **Keycloak Admin** | http://localhost:8080 | admin / admin |
-| **Database** | localhost:5432 | See docker-compose |
+That brings up seven containers:
 
-### 4. Verify Installation
+| Container | Purpose | Port |
+|---|---|---|
+| `opentaberna-api` | The FastAPI service | 8000 |
+| `opentaberna-db` | PostgreSQL 17 | 5432 |
+| `opentaberna-redis` | Redis 8 — cache and job queue | 6379 |
+| `opentaberna-keycloak` | Keycloak 26 — identity provider | 8080 |
+| `opentaberna-minio` | MinIO — product images, carrier labels | 9000 (S3), 9001 (console) |
+| `opentaberna-worker` | ARQ background worker | — |
+| `opentaberna-stripe-listener` | Stripe CLI, forwards test webhooks to the API | — |
 
-Check if the API is running:
+Keycloak takes 30–60 seconds on a first start because it imports the realm. Watch it
+settle with:
+
+```bash
+docker compose -f docker-compose.dev.yml ps
+```
+
+Every container should read `healthy` before you continue.
+
+> **Stripe:** the listener generates its own webhook signing secret and mounts it into the
+> API, so you never copy a `whsec_...` by hand. You only need a test-mode
+> `STRIPE_SECRET_KEY` in `.env` if you intend to exercise payment.
+
+## 3. Verify the API
 
 ```bash
 curl http://localhost:8000/health
 ```
 
-Expected response:
 ```json
 {
-  "status": "healthy",
-  "version": "0.1.0"
+  "status": "ok",
+  "timestamp": "2026-08-26T11:54:20.342282Z"
 }
 ```
 
-### 5. Explore the API
-
-Open your browser and navigate to:
-
-**http://localhost:8000/docs**
-
-This is FastAPI's interactive API documentation (Swagger UI). Here you can:
-- Browse all available endpoints
-- Test API calls directly in the browser
-- See request/response schemas
-- Generate code examples
-
-## First API Call
-
-### Without Authentication
+`/health` is a liveness probe and answers as soon as the process is up. To check that the
+API can actually reach its dependencies, use the readiness probe:
 
 ```bash
-# Get API version
-curl http://localhost:8000/
+curl http://localhost:8000/health/ready
 ```
 
-### With Authentication
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-08-26T11:54:20.446532Z",
+  "database": { "healthy": true, "latency_ms": 3.13, "error": null },
+  "redis":    { "healthy": true, "latency_ms": 2.34, "error": null }
+}
+```
 
-1. **Get Access Token from Keycloak:**
+> Note that `GET /` is **not** an endpoint — it returns 404. There is no root version
+> route; use `/health` or read `info.version` from `/openapi.json`.
+
+## 4. Start the frontends
+
+**Storefront** — runs as a container that serves the built app and proxies `/api` to the
+API on your host:
 
 ```bash
-curl -X POST http://localhost:8080/realms/opentaberna/protocol/openid-connect/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=opentaberna-client" \
+cd ../frontend
+docker compose up --build -d     # http://localhost:4300
+```
+
+**Admin UI** — run from source:
+
+```bash
+cd ../admin_frontend
+npm install
+npm start                        # http://localhost:4200
+```
+
+## 5. Sign in
+
+The realm ships three development users. Passwords are in the realm import and are
+development-only.
+
+| Username | Password | Role | Use it for |
+|---|---|---|---|
+| `adminuser` | `adminpassword` | `admin` | The admin UI, and every `/v1/admin/**` endpoint |
+| `testuser` | `testpassword` | `customer` | The storefront |
+| `testuser2` | `testpassword2` | `customer` | Testing that one customer cannot read another's data |
+
+The Keycloak admin console is at **http://localhost:8080** (`admin` / `admin`).
+
+## Where everything lives
+
+| Service | URL |
+|---|---|
+| **API documentation (Swagger)** | http://localhost:8000/docs |
+| **OpenAPI schema** | http://localhost:8000/openapi.json |
+| **Storefront** | http://localhost:4300 |
+| **Admin UI** | http://localhost:4200 |
+| **Keycloak** | http://localhost:8080 |
+| **MinIO console** | http://localhost:9001 |
+
+## Your first API call
+
+The catalogue is public — browsing needs no token:
+
+```bash
+curl http://localhost:8000/v1/items/
+```
+
+Note the prefix is `/v1`, **not** `/api/v1`. (The storefront container proxies `/api/v1`
+to `/v1`, which is why you may see that path in browser dev tools.)
+
+Everything else needs a bearer token. In development you can take a shortcut through
+Keycloak's direct grant:
+
+```bash
+TOKEN=$(curl -s -X POST \
+  http://localhost:8080/realms/opentaberna/protocol/openid-connect/token \
+  -d "client_id=opentaberna-admin-ui" \
   -d "grant_type=password" \
-  -d "username=admin" \
-  -d "password=admin"
+  -d "username=adminuser" \
+  -d "password=adminpassword" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/v1/admin/orders/
 ```
 
-2. **Use the token:**
+The same call without the header returns `403`. Which client the token came from matters
+as much as the role on it — see [Authorization](/Authorization).
+
+You can also log in inside the Swagger UI: `/docs` is wired to the Keycloak realm, so the
+padlocked operations can be tried out rather than only read.
+
+## Running the API outside Docker
+
+For work on the API itself, run the service on your host and leave the backing containers
+running:
 
 ```bash
-TOKEN="<your_access_token>"
-
-curl http://localhost:8000/api/v1/items \
-  -H "Authorization: Bearer $TOKEN"
+cd fastapi
+uv sync
+source .venv/bin/activate
+python3 src/app/main.py
 ```
 
-## Development Workflow
+The project uses **uv**, not pip, and targets Python 3.14.
 
-### View Logs
+## Development workflow
 
 ```bash
-# All services
-docker-compose -f docker-compose.dev.yml logs -f
+# All logs
+docker compose -f docker-compose.dev.yml logs -f
 
-# Specific service
-docker-compose -f docker-compose.dev.yml logs -f fastapi
+# One service
+docker compose -f docker-compose.dev.yml logs -f opentaberna-api
+
+# Stop
+docker compose -f docker-compose.dev.yml down
+
+# Stop and wipe the database, object store and Keycloak users
+docker compose -f docker-compose.dev.yml down -v
 ```
 
-### Stop Services
+> `down -v` also removes the `keycloak_data` volume, so registered users and their role
+> grants are gone. The three seeded users come back on the next start; anyone you created
+> by hand does not.
+
+## Common issues
+
+### A port is already in use
+
+The stack claims 8000, 5432, 6379, 8080, 9000 and 9001, and the frontends claim 4200 and
+4300. Find the offender with `lsof -nP -iTCP:8000 -sTCP:LISTEN`, then either stop it or
+remap the port in `docker-compose.dev.yml`.
+
+The admin UI takes `--port`:
 
 ```bash
-docker-compose -f docker-compose.dev.yml down
+npm start -- --port 4201
 ```
 
-### Reset Database
+Keycloak only permits redirects back to the ports in the realm import
+(4200, 4300, 8081, 8082), so a frontend moved to an unlisted port will fail login until
+you add it to the client's redirect URIs.
+
+### Keycloak is unhealthy or the admin console refuses HTTP
+
+The dev compose file relaxes `sslRequired` on the master realm on every start, because
+Docker's port forwarding makes a request from your host look non-local and Keycloak would
+otherwise refuse plain HTTP. If the console is unreachable, check that the container
+finished booting:
 
 ```bash
-docker-compose -f docker-compose.dev.yml down -v
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml logs opentaberna-keycloak | tail -20
 ```
 
-## Project Structure
+### The API starts but readiness fails
 
-```
-opentaberna/
-├── fastapi_opentaberna/     # Backend API
-│   ├── src/app/
-│   │   ├── main.py          # FastAPI application
-│   │   ├── shared/          # Shared utilities (logger, etc.)
-│   │   ├── authorize/       # Keycloak integration
-│   │   └── services/        # Feature modules
-│   ├── tests/               # Test suite
-│   └── docs/                # Developer documentation
-├── wiki/                    # End-user documentation
-└── docker-compose.yml       # Production setup
-```
+`/health/ready` names the dependency that is down and the error it returned. A `database`
+failure with the API otherwise healthy usually means `DATABASE_URL` in `.env` still points
+at `localhost` while the API is running inside Compose, where the host is
+`opentaberna-db`.
 
-## Next Steps
+## Next steps
 
-### For End Users:
-- Read [Configuration Guide](/Configuration) for detailed settings
-- Read [Deployment Guide](/Deployment) for production setup
-- Check `/docs` on your API instance for endpoint documentation
+- [API Architecture](/API/Architecture) — every endpoint, the response envelope, errors
+- [Authorization](/Authorization) — roles, clients, and what the API enforces
+- [Orders and Fulfillment](/Orders-and-Fulfillment) — the order lifecycle end to end
+- [Database Architecture](/Database/Architecture) — the real schema
+- [Configuration](/Configuration) — every setting and where it can come from
+- [Deployment](/Deployment) — running this in production
 
-### For Developers:
-- See `fastapi_opentaberna/docs/architecture.md` for architecture overview
-- See `fastapi_opentaberna/docs/development.md` for development workflows
-- See `fastapi_opentaberna/docs/testing.md` for testing guidelines
-- See `fastapi_opentaberna/docs/config.md` for configuration module details
-
-## Common Issues
-
-### Port Already in Use
-
-If port 8000 or 5432 is already in use:
-
-1. Edit `docker-compose.dev.yml`
-2. Change the port mapping:
-   ```yaml
-   ports:
-     - "8001:8000"  # Change 8000 to 8001
-   ```
-
-### Database Connection Issues
-
-```bash
-# Check if PostgreSQL is running
-docker-compose -f docker-compose.dev.yml ps
-
-# View database logs
-docker-compose -f docker-compose.dev.yml logs postgres
-```
-
-### Keycloak Not Starting
-
-Keycloak needs time to initialize (30-60 seconds). Check logs:
-
-```bash
-docker-compose -f docker-compose.dev.yml logs keycloak
-```
-
-## Getting Help
-
-- **API Documentation:** http://localhost:8000/docs (always up-to-date!)
-- **GitHub Issues:** https://github.com/PhilippTheServer/opentaberna/issues
-- **Wiki:** https://wiki.opentaberna.dev
-
-## Summary
-
-You now have OpenTaberna running locally! The most important resource is:
-
-**👉 http://localhost:8000/docs**
-
-This page contains the complete, always up-to-date API documentation with:
-- All endpoints
-- Request/response schemas
-- Interactive testing
-- Authentication examples
-
-Everything you need to integrate with OpenTaberna is documented there automatically by FastAPI.
+For developer-facing detail the wiki does not carry, the `fastapi` repository has
+`docs/architecture.md`, `docs/development.md`, `docs/testing.md` and
+`docs/authorization.md`.
