@@ -63,6 +63,60 @@
         "summary": "Update inventory stock (admin)"
       }
     },
+    "/v1/admin/mail/folders": {
+      "get": {
+        "summary": "List mail folders"
+      },
+      "post": {
+        "summary": "Create a mail folder"
+      }
+    },
+    "/v1/admin/mail/folders/{folder}": {
+      "delete": {
+        "summary": "Delete a mail folder"
+      },
+      "patch": {
+        "summary": "Rename a mail folder"
+      }
+    },
+    "/v1/admin/mail/folders/{folder}/messages": {
+      "get": {
+        "summary": "List messages"
+      }
+    },
+    "/v1/admin/mail/folders/{folder}/messages/{uid}": {
+      "delete": {
+        "summary": "Permanently delete a message"
+      },
+      "get": {
+        "summary": "Read a message"
+      }
+    },
+    "/v1/admin/mail/folders/{folder}/messages/{uid}/attachments/{part_id}": {
+      "get": {
+        "summary": "Download an attachment"
+      }
+    },
+    "/v1/admin/mail/folders/{folder}/messages/{uid}/flags": {
+      "patch": {
+        "summary": "Update message flags"
+      }
+    },
+    "/v1/admin/mail/folders/{folder}/messages/{uid}/move": {
+      "post": {
+        "summary": "Move a message"
+      }
+    },
+    "/v1/admin/mail/messages": {
+      "post": {
+        "summary": "Send a message"
+      }
+    },
+    "/v1/admin/mail/status": {
+      "get": {
+        "summary": "Get mailbox configuration status"
+      }
+    },
     "/v1/admin/orders/": {
       "get": {
         "summary": "List all orders (admin)"
@@ -109,6 +163,11 @@
     "/v1/admin/returns/{return_id}": {
       "patch": {
         "summary": "Update return request (admin)"
+      }
+    },
+    "/v1/admin/telemetry/errors": {
+      "get": {
+        "summary": "Frontend errors, grouped (admin)"
       }
     },
     "/v1/analytics/events": {
@@ -193,6 +252,11 @@
     "/v1/orders/{order_id}/returns": {
       "post": {
         "summary": "Request a return"
+      }
+    },
+    "/v1/telemetry/errors": {
+      "post": {
+        "summary": "Report uncaught frontend errors"
       }
     },
     "/v1/webhooks/stripe": {

@@ -163,6 +163,7 @@ hold stock nobody can buy.
 |---|---|---|
 | `SHOP_TIMEZONE` | `Europe/Berlin` | IANA timezone the shop trades in |
 | `STOREFRONT_ANALYTICS_ENABLED` | `false` | Accept anonymous shopper events from the storefront |
+| `FRONTEND_ERRORS_ENABLED` | `false` | Accept uncaught error reports from the frontends |
 
 Analytics buckets days in this zone rather than UTC, so "today" matches the operator's day.
 Leave it wrong and evening orders land on the following day for any shop east of Greenwich —
@@ -173,6 +174,27 @@ zone is rejected at request time with a `422` naming the value, rather than a `5
 silently start collecting anything, even something that identifies nobody. While off, the
 ingest endpoint returns `404`. The storefront has a matching switch in
 `storefront.config.ts`; both must be on.
+
+## OpenTelemetry
+
+| Setting | Default | Description |
+|---|---|---|
+| `OTEL_ENABLED` | `false` | Export traces and metrics over OTLP |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://opentaberna-otel-collector:4318` | Where telemetry goes |
+| `OTEL_SERVICE_NAME` | `opentaberna-api` | `service.name` on every span and metric |
+| `OTEL_METRIC_EXPORT_INTERVAL_SECONDS` | `30` | Seconds between metric exports |
+
+**The endpoint is the seam.** No application code imports a vendor SDK, so pointing this at
+Datadog or Grafana Cloud is the whole change required to use one. The development compose
+file runs a collector, Prometheus and Grafana; production can keep them or replace all three
+here.
+
+Off by default, like everything else that sends data anywhere. While off, no exporter is
+created and no connection is opened.
+
+The wiring is defensive throughout: an absent or misconfigured collector produces a warning
+and a running API. Observability that can cause the outage it exists to diagnose is a bad
+trade.
 
 ## Object storage — MinIO / S3
 
