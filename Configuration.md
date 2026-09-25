@@ -2,7 +2,7 @@
 title: Configuration
 description: Environment-based configuration management
 published: true
-date: 2026-08-26T12:00:00.000Z
+date: 2026-09-25T12:00:00.000Z
 tags: configuration, settings, environment, docker, kubernetes
 editor: markdown
 dateCreated: 2025-12-07T09:15:00.000Z
@@ -196,7 +196,7 @@ The wiring is defensive throughout: an absent or misconfigured collector produce
 and a running API. Observability that can cause the outage it exists to diagnose is a bad
 trade.
 
-## Object storage — MinIO / S3
+## Object storage — S3-compatible
 
 | Setting | Default | Description |
 |---|---|---|
@@ -206,11 +206,13 @@ trade.
 | `STORAGE_BUCKET_ITEMS` | `item-images` | Product images |
 | `STORAGE_BUCKET_LABELS` | `shipping-labels` | Carrier label files |
 | `STORAGE_MAX_IMAGE_BYTES` | `5242880` | Largest accepted product image (5 MB) |
-| `STORAGE_REGION` | `us-east-1` | Ignored by MinIO, required by the client |
+| `STORAGE_REGION` | `us-east-1` | Must match the store's region |
 
-`MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` configure the MinIO container itself in the
-development compose file; the API authenticates with `STORAGE_ACCESS_KEY` and
-`STORAGE_SECRET_KEY`, which default to the same values.
+The development compose file runs [Garage](https://garagehq.deuxfleurs.fr). On start it
+creates its access key from `STORAGE_ACCESS_KEY` and `STORAGE_SECRET_KEY`, so the API and
+the store always agree; the API creates its buckets itself. Garage also needs
+`GARAGE_RPC_SECRET` (32 random bytes, `openssl rand -hex 32`) — compose refuses to start
+without it. Its region is `s3_region` in `docker/garage/garage.toml`, set to `us-east-1`.
 
 ## Carrier — DHL
 

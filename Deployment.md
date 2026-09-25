@@ -2,7 +2,7 @@
 title: Production Deployment
 description: Guide for deploying OpenTaberna to production
 published: true
-date: 2026-08-26T12:00:00.000Z
+date: 2026-09-25T12:00:00.000Z
 tags: deployment, docker, production, setup
 editor: markdown
 dateCreated: 2025-12-06T15:46:53.723Z
@@ -23,18 +23,18 @@ dateCreated: 2025-12-06T15:46:53.723Z
 Read this before planning a deployment.
 
 `docker-compose.dev.yml` starts the **whole world** — API, worker, PostgreSQL, Redis,
-Keycloak, MinIO and a Stripe listener. It is a development convenience and is not suitable
+Keycloak, Garage and a Stripe listener. It is a development convenience and is not suitable
 for production: it binds the database and Redis to host ports, relaxes Keycloak's TLS
 requirement, and stores data in bind-mounted directories next to the checkout.
 
 `docker-compose.yml`, the production file, ships **only the API container**, attached to an
-external `frontproxy_fnet` network. It assumes PostgreSQL, Redis, Keycloak, MinIO and the
+external `frontproxy_fnet` network. It assumes PostgreSQL, Redis, Keycloak, an S3-compatible object store and the
 worker already exist and are reachable — it does not create them.
 
 So a production deployment is:
 
 1. Provision the backing services yourself — managed PostgreSQL and Redis, a Keycloak
-   instance, S3 or MinIO.
+   instance, and an S3-compatible object store (Garage, Ceph RGW or AWS S3).
 2. Run the worker. It is the same image as the API with a different command
    (`python -m app.worker_main app.worker.WorkerSettings`) and **it is not optional** —
    without it, no carrier label is ever created and no reservation ever expires.
@@ -50,7 +50,7 @@ Internet
    ├── yourdomain.com        → Reverse proxy → Storefront
    └── admin.yourdomain.com  → Reverse proxy → Admin UI
                                     │
-                          PostgreSQL · Redis · MinIO
+                          PostgreSQL · Redis · S3
                                     │
                           Worker (same image, own command)
 ```
@@ -228,9 +228,9 @@ chmod +x /opt/opentaberna/backup.sh
 0 2 * * * /opt/opentaberna/backup.sh
 ```
 
-**Back up the object store too.** Carrier labels and product images live in MinIO, not in
-PostgreSQL, so a database-only backup restores orders whose labels have vanished. Use
-`mc mirror` or your provider's replication.
+**Back up the object store too.** Carrier labels and product images live in the object store,
+not in PostgreSQL, so a database-only backup restores orders whose labels have vanished.
+Use an S3 sync tool such as `rclone sync` or your provider's replication.
 
 Restore:
 

@@ -2,7 +2,7 @@
 title: Getting Started
 description: Quick start guide for OpenTaberna
 published: true
-date: 2026-08-26T12:00:00.000Z
+date: 2026-09-25T12:00:00.000Z
 tags: getting-started, quickstart, setup
 editor: markdown
 dateCreated: 2025-12-06T15:30:00.000Z
@@ -39,6 +39,7 @@ Everything below assumes you are in one of those directories.
 ```bash
 cd fastapi
 cp .env.example .env
+sed -i.bak "s/^GARAGE_RPC_SECRET=$/GARAGE_RPC_SECRET=$(openssl rand -hex 32)/" .env && rm .env.bak
 docker compose -f docker-compose.dev.yml up -d
 ```
 
@@ -50,7 +51,7 @@ That brings up seven containers:
 | `opentaberna-db` | PostgreSQL 17 | 5432 |
 | `opentaberna-redis` | Redis 8 — cache and job queue | 6379 |
 | `opentaberna-keycloak` | Keycloak 26 — identity provider | 8080 |
-| `opentaberna-minio` | MinIO — product images, carrier labels | 9000 (S3), 9001 (console) |
+| `opentaberna-garage` | Garage (S3-compatible) — product images, carrier labels | 9000 (S3), 3903 (admin/health) |
 | `opentaberna-worker` | ARQ background worker | — |
 | `opentaberna-stripe-listener` | Stripe CLI, forwards test webhooks to the API | — |
 
@@ -139,7 +140,7 @@ The Keycloak admin console is at **http://localhost:8080** (`admin` / `admin`).
 | **Storefront** | http://localhost:4300 |
 | **Admin UI** | http://localhost:4200 |
 | **Keycloak** | http://localhost:8080 |
-| **MinIO console** | http://localhost:9001 |
+| **Garage health** | http://localhost:3903/health |
 
 ## Your first API call
 
