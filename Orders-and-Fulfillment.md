@@ -2,7 +2,7 @@
 title: Orders and Fulfillment
 description: The order lifecycle from cart to delivery, and how it survives failure
 published: true
-date: 2026-08-26T12:00:00.000Z
+date: 2026-09-25T12:00:00.000Z
 tags: orders, payments, fulfillment, shipping, returns, inventory
 editor: markdown
 dateCreated: 2026-08-26T12:00:00.000Z
@@ -174,7 +174,7 @@ Label creation goes through a `CarrierAdapter` interface, with two implementatio
 Manual is not a stub. Shipping by hand is a legitimate way to run a small shop, and it is
 the path that works before any carrier account exists.
 
-Label files live in MinIO (`STORAGE_BUCKET_LABELS`); the database stores a URL.
+Label files live in the object store (`STORAGE_BUCKET_LABELS`); the database stores a URL.
 
 ## What the back office does
 

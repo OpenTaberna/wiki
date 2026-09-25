@@ -2,7 +2,7 @@
 title: OpenTaberna
 description: Landing page to the OpenTaberna Project
 published: true
-date: 2026-08-26T12:00:00.000Z
+date: 2026-09-25T12:00:00.000Z
 tags: landing page, opentaberna, architecture, start
 editor: markdown
 dateCreated: 2025-11-19T14:16:40.237Z
@@ -52,7 +52,7 @@ graph LR
     Worker[ARQ Background Worker]
     DB[(PostgreSQL)]
     Redis[(Redis)]
-    Storage[(MinIO Object Storage)]
+    Storage[(S3 Object Storage)]
     Keycloak[Keycloak User Management]
     Stripe[Stripe]
     DHL[DHL Parcel API]
@@ -88,7 +88,7 @@ OpenTaberna is built from these parts:
   repository and imported on container start, so the whole auth setup is reproducible
   from a clean checkout. See [Authorization](/Authorization).
 - **Redis 8** as a cache and as the queue the background worker pulls from.
-- **MinIO** (S3-compatible) for product images and carrier label files.
+- **S3-compatible object storage** (Garage in development) for product images and carrier label files.
 
 Now to the core of the Project:
 
@@ -159,7 +159,7 @@ subgraph DockerHost[Docker Compose Stack]
 
   DB[(PostgreSQL :5432)]
   Redis[(Redis :6379)]
-  Minio[(MinIO :9000 / :9001)]
+  Garage[(Garage :9000)]
   Keycloak[Keycloak :8080]
 end
 
@@ -174,12 +174,12 @@ AdminUI --> Keycloak
 
 API --> DB
 API --> Redis
-API --> Minio
+API --> Garage
 API --> Keycloak
 
 Worker --> DB
 Worker --> Redis
-Worker --> Minio
+Worker --> Garage
 
 StripeCLI --> API
 ```

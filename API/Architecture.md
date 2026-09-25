@@ -2,7 +2,7 @@
 title: API Architecture
 description: Endpoint reference, response envelope and error model
 published: true
-date: 2026-08-26T12:00:00.000Z
+date: 2026-09-25T12:00:00.000Z
 tags: api, architecture, endpoints, reference
 editor: markdown
 dateCreated: 2025-11-19T20:13:35.465Z
@@ -69,7 +69,7 @@ controls the shop.
 | `DELETE` | `/v1/items/{item_uuid}` | Delete item | admin |
 | `PUT` | `/v1/items/{item_uuid}/image` | Upload the product image | admin |
 
-Product images are held in MinIO, not in the database. Uploads are capped by
+Product images are held in the S3-compatible object store, not in the database. Uploads are capped by
 `STORAGE_MAX_IMAGE_BYTES` (5 MB by default) so a single oversized file cannot fill the
 object store.
 
