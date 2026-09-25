@@ -33,6 +33,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SNAPSHOT = ROOT / "openapi.snapshot.json"
 
+# Present in the repository, deliberately not published as a wiki page.
+NOT_WIKI_PAGES = {"README", "CODE_OF_CONDUCT", "CONTRIBUTING"}
+
 # Paths the wiki is allowed to mention without them being API endpoints.
 IGNORED_PATHS = {"/health/live"}
 
@@ -66,7 +69,7 @@ def wiki_pages() -> list[Path]:
     return sorted(
         p
         for p in ROOT.rglob("*.md")
-        if ".git" not in p.parts and p.name != "README.md"
+        if ".git" not in p.parts and p.stem not in NOT_WIKI_PAGES
     )
 
 

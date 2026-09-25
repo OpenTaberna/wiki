@@ -131,6 +131,10 @@ That is the point at which the check bites: pulling in a snapshot with a new end
 the check fail until somebody documents it. Refreshing the snapshot and updating the pages
 belong in the same change.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Conventions
 
 - Front matter stays. Wiki.js uses `title`, `description`, `published`, `date`, `tags`,

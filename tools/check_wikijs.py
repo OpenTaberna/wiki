@@ -45,7 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WIKI_URL = os.environ.get("WIKI_URL", "http://localhost:3000").rstrip("/")
 
 # Present in the repository, deliberately not published as a wiki page.
-NOT_WIKI_PAGES = {"README"}
+NOT_WIKI_PAGES = {"README", "CODE_OF_CONDUCT", "CONTRIBUTING"}
 
 LOGIN_MARKERS = ("login-container", "loginBgUrl", "Sign In")
 

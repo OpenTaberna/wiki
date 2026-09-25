@@ -17,6 +17,9 @@ jobs:
         with:
           python-version: '3.14'
 
+      - name: Community files
+        run: test -f CODE_OF_CONDUCT.md && test -f CONTRIBUTING.md && test -f .github/CODEOWNERS
+
       - name: Check every endpoint is documented and every documented path exists
         run: python3 tools/check_wiki.py
 
