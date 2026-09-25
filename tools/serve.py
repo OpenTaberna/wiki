@@ -23,6 +23,9 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parent.parent
 PORT = 8090
 
+# Present in the repository, deliberately not published as a wiki page.
+NOT_WIKI_PAGES = {"README", "CODE_OF_CONDUCT", "CONTRIBUTING"}
+
 SHELL = """<!doctype html>
 <html lang="en">
 <head>
@@ -169,7 +172,7 @@ def pages() -> list[str]:
     found = sorted(
         p.relative_to(ROOT).as_posix()
         for p in ROOT.rglob("*.md")
-        if ".git" not in p.parts and p.name != "README.md"
+        if ".git" not in p.parts and p.stem not in NOT_WIKI_PAGES
     )
     # home first, it is the landing page
     found.sort(key=lambda p: (p != "home.md", p))

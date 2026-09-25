@@ -12,7 +12,8 @@ them over Wiki.js's own APIs instead:
    mirror, not a forum.
 3. Points the Local File System storage target at the mounted repository and
    imports every Markdown page.
-4. Removes README, which documents the repository rather than the project.
+4. Removes README, CODE_OF_CONDUCT and CONTRIBUTING, which document the
+   repository rather than the project.
 5. Rebuilds the sidebar so every page is reachable without knowing its URL.
 6. Verifies guests can read without logging in, and grants it if not.
 
@@ -37,7 +38,7 @@ ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@opentaberna.local")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "opentaberna-local-admin")
 
 # Pages that exist in the repository but are not wiki content.
-NOT_WIKI_PAGES = {"README"}
+NOT_WIKI_PAGES = {"README", "CODE_OF_CONDUCT", "CONTRIBUTING"}
 
 GUEST_GROUP_ID = 2
 READ_PERMISSIONS = ["read:pages", "read:assets", "read:comments"]
